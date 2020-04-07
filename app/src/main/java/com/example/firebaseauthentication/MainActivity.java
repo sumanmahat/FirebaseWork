@@ -2,10 +2,13 @@ package com.example.firebaseauthentication;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -25,6 +28,9 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
+import com.example.firebaseauthentication.auth.LoginActivity;
+import com.example.firebaseauthentication.auth.RegisterActivity;
+import com.example.firebaseauthentication.auth.Splash;
 import com.example.firebaseauthentication.model.Adapter;
 import com.example.firebaseauthentication.model.Note;
 import com.example.firebaseauthentication.note.AddNote;
@@ -36,6 +42,8 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
@@ -56,6 +64,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     Adapter adapter;
     FirebaseFirestore fStore;
     FirestoreRecyclerAdapter<Note, NoteViewHolder> noteAdapter;
+    FirebaseAuth firebaseAuth;
+    FirebaseUser user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,7 +76,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         ////////////////////////FIREBASE WORK///////////////////////////////////////////
         fStore = FirebaseFirestore.getInstance();
-        Query query = fStore.collection("notes").orderBy("title", Query.Direction.DESCENDING);
+        firebaseAuth = FirebaseAuth.getInstance();
+        user = firebaseAuth.getCurrentUser();
+
+
+        Query query = fStore.collection("notes").document(user.getUid()).collection("myNotes").orderBy("title", Query.Direction.DESCENDING);
+        // query notes > uuid > myNotes > all notes
 
         FirestoreRecyclerOptions<Note> allNotes = new FirestoreRecyclerOptions.Builder<Note>()
                 .setQuery(query, Note.class)
@@ -182,15 +197,67 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        drawerLayout.closeDrawer(GravityCompat.START);
         switch (item.getItemId()) {
             case R.id.add_note:
                 startActivity(new Intent(this, AddNote.class));
+                break;
+
+            case R.id.sync:
+                if (user.isAnonymous()){
+                    startActivity(new Intent(this, LoginActivity.class));
+                }else {
+                    Toast.makeText(this, "You are connected", Toast.LENGTH_SHORT).show();
+                }
+
+                break;
+
+            case R.id.logout:
+                checkUser();
                 break;
 
             default:
                 Toast.makeText(this, "Clicked ", Toast.LENGTH_SHORT).show();
         }
         return false;
+    }
+
+    private void checkUser() {
+        // if user is real or not
+        if (user.isAnonymous()){
+            displayAlert();
+        }
+        FirebaseAuth.getInstance().signOut();
+        startActivity(new Intent(this, Splash.class));
+        finish();
+    }
+
+    private void displayAlert() {
+        AlertDialog.Builder warning = new AlertDialog.Builder(this)
+                .setTitle("Are you Sure? ")
+                .setMessage("You are logged with Temporary account. Logging out will delete all data")
+                .setPositiveButton("sync note", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startActivity(new Intent(getApplicationContext(), RegisterActivity.class));
+                        finish();
+                    }
+                }).setNegativeButton("Logout", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // delete all the data created by anynomimus user and user id
+
+                        user.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                startActivity(new Intent(getApplicationContext(), Splash.class));
+                                finish();
+                            }
+                        });
+
+                    }
+                });
+                    warning.show();
     }
 
     @Override
