@@ -54,8 +54,6 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
-    List<String> title = new ArrayList<>();
-    List<String> content = new ArrayList<>();
 
     DrawerLayout drawerLayout;
     ActionBarDrawerToggle actionBarDrawerToggle;
@@ -93,17 +91,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 noteViewHolder.noteTitle.setText(note.getTitle());
                 noteViewHolder.noteContent.setText(note.getContent());
                 final int code = getRandomColor();
-                noteViewHolder.mCardView.setCardBackgroundColor(noteViewHolder.view.getResources().getColor(code,null));
+                noteViewHolder.mCardView.setCardBackgroundColor(noteViewHolder.view.getResources().getColor(code, null));
                 final String docId = noteAdapter.getSnapshots().getSnapshot(i).getId();
 
                 noteViewHolder.view.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         Intent i = new Intent(v.getContext(), NoteDetails.class);
-                        i.putExtra("title",note.getTitle());
-                        i.putExtra("content",note.getContent());
-                        i.putExtra("code",code);
-                        i.putExtra("noteId",docId);
+                        i.putExtra("title", note.getTitle());
+                        i.putExtra("content", note.getContent());
+                        i.putExtra("code", code);
+                        i.putExtra("noteId", docId);
                         v.getContext().startActivity(i);
                     }
                 });
@@ -119,9 +117,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             @Override
                             public boolean onMenuItemClick(MenuItem item) {
                                 Intent intent = new Intent(v.getContext(), EditNote.class);
-                                intent.putExtra("title",note.getTitle());
-                                intent.putExtra("content",note.getContent());
-                                intent.putExtra("noteId",docId);
+                                intent.putExtra("title", note.getTitle());
+                                intent.putExtra("content", note.getContent());
+                                intent.putExtra("noteId", docId);
                                 startActivity(intent);
                                 return false;
                             }
@@ -130,7 +128,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         menu.getMenu().add("Delete").setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                             @Override
                             public boolean onMenuItemClick(MenuItem item) {
-                                DocumentReference docRef = fStore.collection("notes").document(docId);
+                                DocumentReference docRef = fStore.collection("notes").document(user.getUid()).collection("myNotes").document(docId);
                                 docRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
                                     @Override
                                     public void onSuccess(Void aVoid) {
@@ -176,6 +174,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         noteList.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
         noteList.setAdapter(noteAdapter);
 
+
+/////////////TO GET USERNAME AND EMAIL IN NAV HEADER///////////////////////////////
+        View headerView = navigationView.getHeaderView(0);
+        TextView username = headerView.findViewById(R.id.userDisplayName);
+        TextView useremail = headerView.findViewById(R.id.userDisplayEmail);
+        if (user.isAnonymous()) {
+            useremail.setVisibility(View.GONE);
+            username.setText("Temporary User");
+        } else {
+            useremail.setText(user.getEmail());
+            username.setText(user.getDisplayName());
+        }
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
         FloatingActionButton fab = findViewById(R.id.addNoteFloat);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -187,13 +200,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
-    private void initsetUpRecyclerview() {
-        Log.d(TAG, "initsetUpRecyclerview: init Recycler view");
-        RecyclerView recyclerView = findViewById(R.id.notelist);
-        Adapter adapter = new Adapter(title, content);
-        recyclerView.setAdapter(adapter);
-        noteList.setLayoutManager(new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL));
-    }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -201,12 +207,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         switch (item.getItemId()) {
             case R.id.add_note:
                 startActivity(new Intent(this, AddNote.class));
+                overridePendingTransition(R.anim.slide_up, R.anim.slide_down);
                 break;
 
             case R.id.sync:
-                if (user.isAnonymous()){
+                if (user.isAnonymous()) {
                     startActivity(new Intent(this, LoginActivity.class));
-                }else {
+                    overridePendingTransition(R.anim.slide_up, R.anim.slide_down);
+                    } else {
                     Toast.makeText(this, "You are connected", Toast.LENGTH_SHORT).show();
                 }
 
@@ -224,12 +232,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void checkUser() {
         // if user is real or not
-        if (user.isAnonymous()){
+        if (user.isAnonymous()) {
             displayAlert();
         }
         FirebaseAuth.getInstance().signOut();
         startActivity(new Intent(this, Splash.class));
-        finish();
+        overridePendingTransition(R.anim.slide_up, R.anim.slide_down);
     }
 
     private void displayAlert() {
@@ -240,6 +248,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         startActivity(new Intent(getApplicationContext(), RegisterActivity.class));
+                        overridePendingTransition(R.anim.slide_up, R.anim.slide_down);
                         finish();
                     }
                 }).setNegativeButton("Logout", new DialogInterface.OnClickListener() {
@@ -257,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     }
                 });
-                    warning.show();
+        warning.show();
     }
 
     @Override
@@ -317,7 +326,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onStop() {
         super.onStop();
-        if (noteAdapter != null){
+        if (noteAdapter != null) {
             noteAdapter.stopListening();
         }
     }

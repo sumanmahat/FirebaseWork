@@ -22,6 +22,8 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.EmailAuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 
 public class RegisterActivity extends AppCompatActivity {
     EditText username, userEmail, userPass, conPass;
@@ -56,7 +58,7 @@ public class RegisterActivity extends AppCompatActivity {
         btnCreate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String uUserName = username.getText().toString();
+                final String uUserName = username.getText().toString();
                 String uUserEmail = userEmail.getText().toString();
                 String uUserPassword = userPass.getText().toString();
                 String uUserConP = conPass.getText().toString();
@@ -70,17 +72,30 @@ public class RegisterActivity extends AppCompatActivity {
                     conPass.setError("Password do not match");
                 }
 
+                progressBar.setVisibility(View.VISIBLE);
+
                 AuthCredential credential = EmailAuthProvider.getCredential(uUserEmail,uUserPassword);
                 fAuth.getCurrentUser().linkWithCredential(credential).addOnSuccessListener(new OnSuccessListener<AuthResult>() {
                     @Override
                     public void onSuccess(AuthResult authResult) {
                         Toast.makeText(RegisterActivity.this, "Note are saved", Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(getApplicationContext(), MainActivity.class));
+
+                        //to save user's full name
+                        FirebaseUser user = fAuth.getCurrentUser();
+                        UserProfileChangeRequest request = new UserProfileChangeRequest.Builder()
+                                .setDisplayName(uUserName)
+                                .build();
+                        user.updateProfile(request);
+                        startActivity(new Intent(getApplicationContext(), MainActivity.class));
+                        overridePendingTransition(R.anim.slide_up, R.anim.slide_down);
+
                     }
                 }).addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
                         Toast.makeText(RegisterActivity.this, "Failed to connect", Toast.LENGTH_SHORT).show();
+                        progressBar.setVisibility(View.GONE);
                     }
                 });
 
